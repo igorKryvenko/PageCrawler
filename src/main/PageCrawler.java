@@ -8,16 +8,17 @@ import java.util.concurrent.*;
  * Created by igor on 17.06.17.
  */
 public class PageCrawler {
-    private LinkedBlockingQueue<String> link = new LinkedBlockingQueue<>();
+    public LinkedBlockingQueue<String> link = new LinkedBlockingQueue<>();
     private ExecutorService executor = Executors.newCachedThreadPool();
-    private Set<String> result = new HashSet<>();
+    public Set<String> result = new HashSet<>();
     private String url;
-    private CountDownLatch latch = new CountDownLatch(2);
+    private CountDownLatch latch = new CountDownLatch(1);
 
     public PageCrawler(String url) {
         this.url = url;
         this.link.add(url);
     }
+
     public void addUrl(String url) {
         link.add(url);
     }
@@ -26,27 +27,29 @@ public class PageCrawler {
         return latch;
     }
 
-    public void start() throws InterruptedException {
+    public void start() throws InterruptedException, BrokenBarrierException {
         String next;
-        while(!link.isEmpty()) {
-
+        while (!link.isEmpty()) {
             next = link.take();
-            System.out.println("Next " + next);
-            if(result.contains(next)) continue;
-            if(!validUrl(next)) continue;
-            result.add(next);
-            System.out.println(result);
-            CrawlerJob job = new CrawlerJob(next,this);
-            executor.submit(job);
 
-            if(link.isEmpty()) {
-                latch.await();
+            if (result.contains(next)) continue;
+            if (!validUrl(next)) continue;
+            result.add(next);
+
+
+            CrawlerJob job = new CrawlerJob(next, this);
+            executor.execute(job);
+
+            if (link.isEmpty()) {
+                Thread.sleep(3000);
             }
 
-            executor.shutdown();
 
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
         }
+        executor.shutdown();
+
+        executor.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+
     }
 
     private boolean validUrl(String url) {
@@ -71,7 +74,7 @@ public class PageCrawler {
         return true;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws BrokenBarrierException {
         PageCrawler crawler = new PageCrawler("https://habrahabr.ru");
         try {
             crawler.start();

@@ -1,25 +1,26 @@
 package main;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import main.util.UrlUtils;
+import org.jsoup.HttpStatusException;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.net.URI;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import java.net.UnknownHostException;
+
 
 /**
  * Created by igor on 17.06.17.
  */
 public class CrawlerJob implements Runnable {
 
-    private static final Logger logger = LoggerFactory.getLogger(CrawlerJob.class);
 
     private String url;
     private PageCrawler pageCrawler;
-    private AtomicInteger integer;
+
 
     public CrawlerJob(String url, PageCrawler pageCrawler) {
         this.url = url;
@@ -29,27 +30,19 @@ public class CrawlerJob implements Runnable {
     @Override
     public void run() {
         try {
-            System.out.println("Url" + url);
             Document document = Jsoup.connect(url).get();
             Elements elements = document.getElementsByTag("a");
+            String baseUri = document.baseUri();
             elements.forEach(e -> {
-                        pageCrawler.addUrl(e.attr("href"));
-                System.out.println(e.attr("href"));
-
-                //System.out.println("Count of elements" + this.integer.incrementAndGet());
-                        logger.debug(e.attr("href"));
-                    }
-
-            );
-            if(this.pageCrawler.getLatch().getCount() == 1) {
-                try {
-                    this.pageCrawler.getLatch().await();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
+                pageCrawler.addUrl(UrlUtils.normalize(e.attr("href"), baseUri));
+                System.out.println(UrlUtils.normalize(e.attr("href"), baseUri));
+            });
         } catch (IOException e) {
-            e.printStackTrace();
+            if (e instanceof UnknownHostException) {
+                System.out.println("Server doesn't support https");
+            } else if (e instanceof HttpStatusException) {
+                System.out.println("Service is unavailable");
+            } else e.printStackTrace();
         }
 
     }
