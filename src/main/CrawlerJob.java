@@ -9,6 +9,7 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 
 
@@ -42,6 +43,8 @@ public class CrawlerJob implements Runnable {
                 System.out.println("Server doesn't support https");
             } else if (e instanceof HttpStatusException) {
                 System.out.println("Service is unavailable");
+            } else if (e instanceof SocketTimeoutException) {
+                System.out.println("Socket timeout");
             } else e.printStackTrace();
         }
 
